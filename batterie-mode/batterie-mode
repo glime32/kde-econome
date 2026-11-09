@@ -1,0 +1,25 @@
+#!/bin/sh
+# batterie-mode — choisit le mode de charge de la batterie Lenovo (lancé en root).
+#   conservation  plafond de charge (Long_Life) ; remis à chaque démarrage
+#   normal        charge normale jusqu'à 100 % (Standard)
+#   rapide        charge rapide (Fast) ; chauffe plus la batterie
+# Appelé par le widget « Mode de charge » via : sudo -n /usr/local/bin/batterie-mode <mode>
+CT=/sys/class/power_supply/BAT0/charge_types
+OLD=/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode
+case "$1" in
+    conservation) v=Long_Life; o=1 ;;
+    normal)       v=Standard;  o=0 ;;
+    rapide)       v=Fast;      o= ;;
+    *) echo "usage : batterie-mode conservation|normal|rapide" >&2; exit 2 ;;
+esac
+# Au démarrage, le pilote ideapad peut arriver un peu après : on l'attend 10 s max
+i=0
+while [ ! -e "$CT" ] && [ ! -e "$OLD" ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
+if [ -e "$CT" ] && grep -qw -- "$v" "$CT"; then
+    printf '%s\n' "$v" > "$CT" && exit 0
+fi
+if [ -n "$o" ] && [ -e "$OLD" ]; then
+    printf '%s\n' "$o" > "$OLD" && exit 0
+fi
+echo "batterie-mode : mode $v indisponible sur ce PC" >&2
+exit 1

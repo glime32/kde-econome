@@ -1,0 +1,9 @@
+[package]
+name = "econome"
+version = "1.0.0"
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+dbus.workspace = true
+serde_json.workspace = true

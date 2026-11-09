@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["econome", "perf-retour"]
+
+[workspace.dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+dbus = "0.9"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

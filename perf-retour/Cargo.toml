@@ -1,0 +1,8 @@
+[package]
+name = "perf-retour"
+version = "1.0.0"
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+dbus.workspace = true
