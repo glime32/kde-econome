@@ -4,17 +4,18 @@
 
 <p align="center"><a href="README.md">🇬🇧 English version</a></p>
 
-**Deux petits démons qui économisent la batterie d'un portable sous KDE Plasma : le Bluetooth allumé pour rien, l'écran à haute fréquence sur batterie, le plafond de charge oublié, le profil Performance qu'on n'a jamais quitté. Ils dorment sur D-Bus et ne se réveillent que quand quelque chose change.**
+**Deux petits démons qui économisent la batterie d'un portable sous KDE Plasma : le Bluetooth allumé pour rien, le plafond de charge oublié, le profil Performance qu'on n'a jamais quitté. Ils dorment sur D-Bus et ne se réveillent que quand quelque chose change.**
 
 <p align="center"><img src="docs/etat.png" width="80%" alt="econome etat et perf-retour etat"></p>
 
 ## econome
 
 - **Bluetooth** : allumé depuis 10 minutes sans aucun appareil connecté, toutes les radios Bluetooth sont coupées, comme avec le bouton de Plasma, et une notification le dit. Pour le rallumer, le bouton habituel.
-- **Écran** : sur batterie, l'écran intégré passe au mode le plus proche de 60 Hz, à la même définition ; sur secteur, il revient à sa fréquence la plus haute. Seulement quand tu branches ou débranches : une fréquence choisie à la main reste.
 - **Plafond de charge** : branché, à 99 % ou plus et hors Conservation depuis 20 minutes, la batterie repasse en Conservation (avec `batterie-mode`, plus bas), et une notification le dit. Pour le jour où tu as chargé à 100 % avant de partir et où tu as oublié de revenir.
 
 Il attend sur le bus système (UPower, BlueZ). Ses seuls minuteurs : toutes les 5 minutes sur secteur, parce que le mode de charge n'envoie aucun signal, et l'échéance du Bluetooth quand elle est armée. Moins de 4 Mo de mémoire.
+
+Les premières versions faisaient aussi passer l'écran en 60 Hz sur batterie et à sa fréquence la plus haute sur secteur. C'est retiré : sur le portable pour lequel il est fait, chaque changement de fréquence faisait perdre à la dalle son auto-rafraîchissement (PSR) jusqu'au redémarrage suivant, ce qui coûtait plus que la baisse de fréquence ne rapportait (mesuré au repos : 2,95 W avec le PSR, 4,08 W sans, en 60 Hz tous les deux).
 
 ## perf-retour
 
@@ -30,7 +31,7 @@ Fait sur un Lenovo Yoga 7 2-en-1 (ideapad-laptop). Un portable dont la batterie 
 
 ## Installation
 
-Il faut KDE Plasma 6 (`kscreen-doctor`), power-profiles-daemon, BlueZ, UPower et Rust (`cargo`).
+Il faut KDE Plasma 6, power-profiles-daemon, BlueZ, UPower et Rust (`cargo`).
 
 ```bash
 git clone https://github.com/glime32/kde-econome && cd kde-econome
@@ -44,8 +45,7 @@ Chaque installeur compile son démon, le met dans `~/.local/bin` et active un se
 ## En ligne de commande
 
 ```
-econome etat                      ce qu'il voit : secteur, mode de l'écran, mode de charge, Bluetooth
-econome ecran batterie|secteur    applique la règle de l'écran tout de suite
+econome etat                      ce qu'il voit : secteur, mode de charge, Bluetooth
 perf-retour etat                  profil actuel et quand il reviendrait en arrière
 ```
 

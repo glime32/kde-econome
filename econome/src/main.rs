@@ -1,13 +1,11 @@
-// econome: three small battery savings in one sleeping process.
+// econome: two small battery savings in one sleeping process.
 //   - Bluetooth is rfkill-blocked after 10 min with nothing connected
-//   - the built-in screen goes to 60 Hz on battery, back to its fastest rate on AC
 //   - plugged in, full, and not in Conservation for 20 min: back to Conservation
 //
 // It waits on the system bus (UPower, BlueZ). The only timers: every 5 min while
 // on AC (the charge mode has no signal), and the Bluetooth deadline when armed.
 //
 // Command line: econome            daemon
-//               econome ecran batterie|secteur
 //               econome etat
 
 use dbus::arg::{prop_cast, PropMap, RefArg, Variant};
@@ -15,7 +13,6 @@ use dbus::blocking::stdintf::org_freedesktop_dbus::ObjectManager;
 use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
-use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use std::process::Command;
@@ -75,38 +72,6 @@ fn notify(icon: &str, title: &str, body: &str) {
         "Notify",
         ("Économie d'énergie", 0u32, icon, title, body, Vec::<String>::new(), hints, 5000i32),
     );
-}
-
-// Screen
-
-fn rate(mode: &Value) -> f64 {
-    mode["refreshRate"].as_f64().unwrap_or(0.0)
-}
-
-/// (output name, current mode id, wanted mode id) for the enabled built-in screen
-fn screen_plan(battery: bool) -> Option<(String, String, String)> {
-    let out = Command::new("kscreen-doctor").arg("-j").output().ok()?;
-    let json: Value = serde_json::from_slice(&out.stdout).ok()?;
-    // type 7 = Panel in libkscreen
-    let panel = json["outputs"].as_array()?.iter().find(|o| o["type"] == 7 && o["enabled"] == true)?;
-    let modes = panel["modes"].as_array()?;
-    let current = modes.iter().find(|m| m["id"] == panel["currentModeId"])?;
-    let same_size = modes.iter().filter(|m| m["size"] == current["size"]);
-    let wanted = if battery {
-        same_size.filter(|m| rate(m) >= 50.0).min_by(|a, b| (rate(a) - 60.0).abs().total_cmp(&(rate(b) - 60.0).abs()))?
-    } else {
-        same_size.max_by(|a, b| rate(a).total_cmp(&rate(b)))?
-    };
-    Some((panel["name"].as_str()?.to_string(), current["id"].as_str()?.to_string(), wanted["id"].as_str()?.to_string()))
-}
-
-fn set_screen(battery: bool) -> bool {
-    let Some((name, current, wanted)) = screen_plan(battery) else { return false };
-    if current == wanted {
-        return true;
-    }
-    let arg = format!("output.{name}.mode.{wanted}");
-    Command::new("kscreen-doctor").arg(arg).output().is_ok_and(|o| o.status.success())
 }
 
 // Bluetooth
@@ -192,7 +157,6 @@ fn run() -> Result<(), dbus::Error> {
         watch(&bus, rule.static_clone(), &bt)?;
     }
 
-    let mut screen_for: Option<bool> = None;
     let mut next_poll: Option<Instant> = None;
     let mut full_since: Option<Instant> = None;
     let mut bt_check: Option<Instant> = None;
@@ -202,16 +166,12 @@ fn run() -> Result<(), dbus::Error> {
         let now = Instant::now();
         if power.swap(false, Ordering::Relaxed) || next_poll.is_some_and(|t| t <= now) {
             let battery = on_battery();
-            // kscreen may not be ready at login: retry on the next poll
-            if screen_for != Some(battery) && set_screen(battery) {
-                screen_for = Some(battery);
-            }
             if battery {
                 full_since = None;
             } else {
                 back_to_conservation(&mut full_since, now, full_wait);
             }
-            next_poll = (!battery || screen_for != Some(battery)).then(|| now + AC_POLL);
+            next_poll = (!battery).then(|| now + AC_POLL);
         }
 
         if bt.swap(false, Ordering::Relaxed) {
@@ -249,19 +209,14 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        ["ecran", which @ ("batterie" | "secteur")] => {
-            std::process::exit(if set_screen(*which == "batterie") { 0 } else { 1 });
-        }
         ["etat"] => {
             let bt = Connection::new_system().is_ok_and(|b| bluetooth_idle(&b));
-            let screen = screen_plan(on_battery()).map(|(n, c, w)| format!("{n} mode {c} (voulu {w})"));
             println!("sur batterie : {}", if on_battery() { "oui" } else { "non" });
-            println!("écran        : {}", screen.unwrap_or_else(|| "introuvable".into()));
             println!("charge       : {} ({} %)", charge_mode().unwrap_or_else(|| "?".into()), capacity());
             println!("bluetooth    : {}", if bt { "allumé, rien de connecté" } else { "coupé ou utilisé" });
         }
         _ => {
-            eprintln!("usage : econome [ecran batterie|secteur | etat]");
+            eprintln!("usage : econome [etat]");
             std::process::exit(2);
         }
     }

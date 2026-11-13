@@ -4,17 +4,18 @@
 
 <p align="center"><a href="README.fr.md">🇫🇷 Version française</a></p>
 
-**Two small daemons that save battery on a KDE Plasma laptop: Bluetooth left on for nothing, a high refresh rate on battery, a charge limit you forgot to put back, a Performance profile you forgot to leave. They sleep on D-Bus and only wake up when something changes.**
+**Two small daemons that save battery on a KDE Plasma laptop: Bluetooth left on for nothing, a charge limit you forgot to put back, a Performance profile you forgot to leave. They sleep on D-Bus and only wake up when something changes.**
 
 <p align="center"><img src="docs/etat.png" width="80%" alt="econome etat and perf-retour etat"></p>
 
 ## econome
 
 - **Bluetooth**: after 10 minutes switched on with no device connected, every Bluetooth radio is soft-blocked, like Plasma's own toggle, and a notification says so. Turn it back on with the usual button.
-- **Screen**: on battery, the built-in screen goes to the mode closest to 60 Hz at the same resolution; on AC, back to its fastest rate. Only when you plug or unplug, so a rate you pick by hand stays.
 - **Charge limit**: plugged in, at 99 % or more and not in Conservation for 20 minutes, the battery goes back to Conservation (through `batterie-mode`, below), with a notification. For the day you charged to 100 % before a trip and never switched back.
 
 It waits on the system bus (UPower, BlueZ). The only timers: every 5 minutes while on AC, since the charge mode has no change signal, and the Bluetooth deadline when it is armed. Under 4 MB of RAM.
+
+Earlier versions also switched the screen between 60 Hz on battery and its fastest rate on AC. That part is gone: on the laptop it was made for, every change of refresh rate made the panel lose its self-refresh (PSR) until the next reboot, which cost more than the lower rate saved (measured at rest: 2.95 W with PSR, 4.08 W without, both at 60 Hz).
 
 ## perf-retour
 
@@ -30,7 +31,7 @@ Made on a Lenovo Yoga 7 2-in-1 (ideapad-laptop). A laptop whose battery has `cha
 
 ## Install
 
-Needs KDE Plasma 6 (`kscreen-doctor`), power-profiles-daemon, BlueZ, UPower and Rust (`cargo`).
+Needs KDE Plasma 6, power-profiles-daemon, BlueZ, UPower and Rust (`cargo`).
 
 ```bash
 git clone https://github.com/glime32/kde-econome && cd kde-econome
@@ -44,8 +45,7 @@ Each installer builds its daemon, puts it in `~/.local/bin` and enables a system
 ## Command line
 
 ```
-econome etat                      what it sees: power source, screen mode, charge mode, Bluetooth
-econome ecran batterie|secteur    apply the screen rule now
+econome etat                      what it sees: power source, charge mode, Bluetooth
 perf-retour etat                  current profile and when it would go back
 ```
 
